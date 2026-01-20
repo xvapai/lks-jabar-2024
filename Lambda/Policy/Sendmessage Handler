@@ -1,0 +1,26 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "Statement1",
+			"Effect": "Allow",
+			"Action": [
+				"dynamodb:BatchGetItem",
+				"dynamodb:GetRecords",
+				"dynamodb:GetShardIterator",
+				"dynamodb:Query",
+				"dynamodb:GetItem",
+				"dynamodb:Scan",
+				"dynamodb:ConditionCheckItem",
+				"dynamodb:DescribeTable"
+			],
+			"Resource": "arn:aws:dynamodb:us-west-2:244190102802:table/lks-jabar-2024-connection"
+		},
+		{
+			"Sid": "Statement2",
+			"Effect": "Allow",
+			"Action": "execute-api:ManageConnections",
+			"Resource": "arn:aws:execute-api:us-west-2:244190102802:*/*/POST/@connections/*"
+		}
+	]
+}
