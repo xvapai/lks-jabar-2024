@@ -1,0 +1,17 @@
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "Statement1",
+			"Effect": "Allow",
+			"Action": [
+				"dynamodb:BatchWriteItem",
+				"dynamodb:PutItem",
+				"dynamodb:DescribeTable",
+				"dynamodb:DeleteItem",
+				"dynamodb:UpdateItem"
+			],
+			"Resource": "arn:aws:dynamodb:us-west-2:244190102802:table/lks-jabar-2024-connection"
+		}
+	]
+}
