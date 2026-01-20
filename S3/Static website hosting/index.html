@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LKS WebSocket Chat</title>
+  <style>
+    body { font-family: Arial; background: #111; color: #0f0; padding: 20px; }
+    input, button { padding: 8px; margin: 4px; }
+    #messages { border: 1px solid #0f0; height: 250px; overflow-y: auto; padding: 10px; }
+  </style>
+</head>
+<body>
+  <h2>LKS WebSocket Chat</h2>
+
+  <input id="wsurl" placeholder="wss://your-api-url/production" size="50" />
+  <button onclick="connect()">Connect</button>
+  <br><br>
+
+  <input id="msg" placeholder="Type message..." size="40" />
+  <button onclick="sendMessage()">Send</button>
+
+  <div id="messages"></div>
+
+  <script>
+    let socket;
+
+    function connect() {
+      const url = document.getElementById("wsurl").value;
+      socket = new WebSocket(url);
+
+      socket.onopen = () => log("Connected");
+      socket.onmessage = e => log("Message: " + e.data);
+      socket.onclose = () => log("Disconnected");
+      socket.onerror = err => log("Error: " + err);
+    }
+
+    function sendMessage() {
+      const msg = document.getElementById("msg").value;
+      socket.send(JSON.stringify({ action: "sendmessage", message: msg }));
+      document.getElementById("msg").value = "";
+    }
+
+    function log(text) {
+      const div = document.getElementById("messages");
+      div.innerHTML += text + "<br>";
+      div.scrollTop = div.scrollHeight;
+    }
+  </script>
+</body>
+</html>
