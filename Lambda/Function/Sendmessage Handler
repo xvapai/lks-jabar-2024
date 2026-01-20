@@ -1,0 +1,53 @@
+import { DynamoDBClient, ScanCommand, DeleteItemCommand } from "@aws-sdk/client-dynamodb";
+import { ApiGatewayManagementApiClient, PostToConnectionCommand } from "@aws-sdk/client-apigatewaymanagementapi";
+
+const ddb = new DynamoDBClient({});
+
+export const handler = async (event) => {
+  console.log("EVENT:", JSON.stringify(event));
+
+  const tableName = process.env.table;
+  const domain = event.requestContext.domainName;
+  const stage = event.requestContext.stage;
+
+  const apiGw = new ApiGatewayManagementApiClient({
+    endpoint: `https://${domain}/${stage}`
+  });
+
+  const body = JSON.parse(event.body || "{}");
+  const message = body.message || "No message";
+
+  try {
+    const data = await ddb.send(new ScanCommand({ TableName: tableName }));
+    console.log("CONNECTIONS:", JSON.stringify(data.Items));
+
+    for (const item of data.Items || []) {
+      const connectionId = item.connectionId.S;
+
+      try {
+        await apiGw.send(
+          new PostToConnectionCommand({
+            ConnectionId: connectionId,
+            Data: Buffer.from(JSON.stringify({ message }))
+          })
+        );
+      } catch (err) {
+        console.error("POST ERROR:", err);
+
+        if (err.$metadata?.httpStatusCode === 410) {
+          await ddb.send(
+            new DeleteItemCommand({
+              TableName: tableName,
+              Key: { connectionId: { S: connectionId } }
+            })
+          );
+        }
+      }
+    }
+
+    return { statusCode: 200, body: "Message sent" };
+  } catch (err) {
+    console.error("MAIN ERROR:", err);
+    return { statusCode: 500, body: "Failed" };
+  }
+};
