@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GreenMind Chat — WebSocket Chat</title>
+
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+    <style>
+        :root {
+            --glass-bg: rgba(5, 25, 15, 0.75);
+            --glass-border: rgba(34, 197, 94, 0.25);
+            --accent: #22c55e;
+            --accent-2: #16a34a;
+            --text-main: #eafff1;
+            --text-muted: rgba(234,255,241,0.65);
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: radial-gradient(circle at top left, #052e1b, #020f08 65%);
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+
+        /* ===============================
+           NAVBAR
+        =============================== */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(2, 15, 8, 0.65);
+            backdrop-filter: blur(18px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 700;
+            font-size: 1.1rem;
+            letter-spacing: 0.3px;
+            color: var(--accent);
+        }
+
+        .brand i {
+            font-size: 1.35rem;
+        }
+
+        .nav-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 14px;
+            padding: 0.6rem 1rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            color: white;
+            background: rgba(34,197,94,0.1);
+            border: 1px solid rgba(34,197,94,0.25);
+            backdrop-filter: blur(10px);
+            transition: transform 0.15s ease, box-shadow 0.2s ease;
+        }
+
+        /* glow hover */
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow:
+                0 0 10px rgba(34,197,94,0.35),
+                0 0 25px rgba(34,197,94,0.45),
+                inset 0 0 10px rgba(34,197,94,0.25);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-2), var(--accent));
+            border: none;
+            box-shadow: 0 10px 30px rgba(34,197,94,0.45);
+            color: #042713;
+        }
+
+        .btn-primary:hover {
+            box-shadow:
+                0 0 12px rgba(34,197,94,0.55),
+                0 0 35px rgba(34,197,94,0.7);
+        }
+
+        /* ===============================
+           HERO
+        =============================== */
+        .hero {
+            padding: 6rem 2rem 4rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        @media (max-width: 900px) {
+            .hero {
+                grid-template-columns: 1fr;
+                padding-top: 4rem;
+            }
+        }
+
+        .hero-left h1 {
+            font-size: clamp(2.2rem, 4vw, 3.2rem);
+            line-height: 1.15;
+            margin: 0 0 1.25rem;
+            letter-spacing: -0.5px;
+        }
+
+        .hero-left h1 span {
+            background: linear-gradient(135deg, var(--accent-2), var(--accent));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-left p {
+            max-width: 520px;
+            font-size: 1rem;
+            line-height: 1.7;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        /* ===============================
+           GLASS CARD
+        =============================== */
+        .glass-card {
+            position: relative;
+            background: var(--glass-bg);
+            backdrop-filter: blur(30px);
+            border: 1px solid var(--glass-border);
+            border-radius: 28px;
+            padding: 1.75rem 1.75rem 2rem;
+            box-shadow: 0 0 80px rgba(34,197,94,0.35);
+            overflow: hidden;
+        }
+
+        .glass-card::before {
+            content: "";
+            position: absolute;
+            inset: -1px;
+            border-radius: inherit;
+            background: linear-gradient(
+                120deg,
+                transparent 20%,
+                rgba(34,197,94,0.5),
+                transparent 80%
+            );
+            opacity: 0.35;
+            pointer-events: none;
+        }
+
+        .glass-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.25rem;
+        }
+
+        .glass-title {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            color: var(--accent);
+        }
+
+        /* ===============================
+           ONLINE PULSE
+        =============================== */
+        .status-pill {
+            padding: 0.25rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: rgba(34,197,94,0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34,197,94,0.35);
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 1.4s infinite;
+            box-shadow: 0 0 8px rgba(74,222,128,0.9);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.8); opacity: 0.4; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .code-window {
+            background: rgba(0,0,0,0.35);
+            border-radius: 18px;
+            border: 1px solid rgba(34,197,94,0.15);
+            padding: 1rem 1.1rem;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.8rem;
+            line-height: 1.55;
+            color: rgba(234,255,241,0.85);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .code-window .cmd { color: #86efac; }
+        .code-window .ok { color: #4ade80; }
+        .code-window .warn { color: #facc15; }
+
+        /* ===============================
+           NEW STATS
+        =============================== */
+        .stats {
+            margin-top: 1rem;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+        }
+
+        .stat-box {
+            background: rgba(34,197,94,0.08);
+            border: 1px solid rgba(34,197,94,0.25);
+            border-radius: 14px;
+            padding: 0.6rem 0.7rem;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: #4ade80;
+        }
+
+        .stat-label {
+            font-size: 0.65rem;
+            letter-spacing: 0.4px;
+            color: var(--text-muted);
+        }
+
+        /* ===============================
+           FEATURES
+        =============================== */
+        .features {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem 5rem;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 900px) {
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .feature-card {
+            background: rgba(5, 25, 15, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(34,197,94,0.2);
+            border-radius: 22px;
+            padding: 1.5rem 1.5rem 1.75rem;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(34,197,94,0.3);
+        }
+
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent-2), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 8px 20px rgba(34,197,94,0.45);
+            color: #042713;
+        }
+
+        .feature-title {
+            font-weight: 700;
+            margin-bottom: 0.4rem;
+            letter-spacing: 0.3px;
+            color: var(--accent);
+        }
+
+        .feature-desc {
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: var(--text-muted);
+        }
+
+        /* ===============================
+           FOOTER
+        =============================== */
+        footer {
+            padding: 2rem;
+            border-top: 1px solid rgba(34,197,94,0.15);
+            text-align: center;
+            font-size: 0.75rem;
+            color: rgba(234,255,241,0.55);
+            background: rgba(2, 15, 8, 0.55);
+            backdrop-filter: blur(16px);
+        }
+
+        /* ===============================
+           CHAT OVERLAY
+        =============================== */
+        .chat-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(2, 15, 8, 0.7);
+            backdrop-filter: blur(20px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .chat-overlay.active {
+            display: flex;
+        }
+
+        .chat-window {
+            width: min(900px, 95%);
+            height: 80vh;
+            background: rgba(5, 25, 15, 0.75);
+            backdrop-filter: blur(40px);
+            border-radius: 28px;
+            border: 1px solid rgba(34,197,94,0.25);
+            box-shadow: 0 0 90px rgba(34,197,94,0.45);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 1rem 1.5rem;
+            background: rgba(34,197,94,0.08);
+            border-bottom: 1px solid rgba(34,197,94,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-title {
+            font-weight: 700;
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            letter-spacing: 0.3px;
+            color: var(--accent);
+        }
+
+        .chat-close {
+            background: none;
+            border: none;
+            color: var(--text-main);
+            font-size: 1.2rem;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: opacity 0.15s ease;
+        }
+
+        .chat-close:hover {
+            opacity: 1;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+        }
+
+        .chat-bubble {
+            max-width: 75%;
+            padding: 0.75rem 1rem;
+            border-radius: 16px;
+            line-height: 1.55;
+            font-size: 0.9rem;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            animation: fadeIn 0.15s ease;
+        }
+
+        .chat-bubble.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--accent-2), var(--accent));
+            box-shadow: 0 8px 22px rgba(34,197,94,0.45);
+            color: #042713;
+            font-weight: 600;
+        }
+
+        .chat-bubble.other {
+            align-self: flex-start;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(34,197,94,0.2);
+        }
+
+        .chat-meta {
+            font-size: 0.65rem;
+            opacity: 0.6;
+            margin-bottom: 0.15rem;
+        }
+
+        .chat-input {
+            display: flex;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: rgba(34,197,94,0.05);
+            border-top: 1px solid rgba(34,197,94,0.2);
+        }
+
+        .chat-input input {
+            flex: 1;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(34,197,94,0.25);
+            border-radius: 14px;
+            padding: 0.7rem 0.9rem;
+            color: white;
+            font-size: 0.85rem;
+        }
+
+        .chat-input input::placeholder {
+            color: rgba(234,255,241,0.45);
+        }
+
+        .chat-input input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(34,197,94,0.25);
+        }
+
+        .chat-input button {
+            background: linear-gradient(135deg, var(--accent-2), var(--accent));
+            border: none;
+            border-radius: 14px;
+            padding: 0 1rem;
+            color: #042713;
+            font-size: 0.95rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 22px rgba(34,197,94,0.45);
+            transition: transform 0.15s ease, box-shadow 0.2s ease;
+        }
+
+        .chat-input button:hover {
+            transform: translateY(-1px);
+            box-shadow:
+                0 0 12px rgba(34,197,94,0.55),
+                0 0 35px rgba(34,197,94,0.7);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===============================
+         NAVBAR
+=============================== -->
+<nav class="navbar">
+    <div class="brand">
+        <!-- bubble/chat icon instead of cpu -->
+        <i class="bi bi-chat-heart-fill"></i>
+        <span>GreenMind Chat</span>
+    </div>
+    <div class="nav-actions">
+        <button class="btn" onclick="window.open('https://github.com/', '_blank')">
+            <i class="bi bi-github"></i>
+            <span>GitHub</span>
+        </button>
+        <button class="btn btn-primary" onclick="openChat()">
+            <i class="bi bi-chat-dots-fill"></i>
+            <span>Start Chat</span>
+        </button>
+    </div>
+</nav>
+
+<!-- ===============================
+         HERO SECTION
+=============================== -->
+<section class="hero">
+    <div class="hero-left">
+        <h1>
+            Real-time chat with
+            <span>GreenMind Chat</span>
+        </h1>
+        <p>
+            A modern, real-time WebSocket chat interface powered by AWS API Gateway,
+            Lambda, and DynamoDB. Designed for fast demos, multiplayer apps, and
+            cloud-native communication systems.
+        </p>
+        <div class="hero-actions">
+            <button class="btn btn-primary" onclick="openChat()">
+                <i class="bi bi-chat-dots-fill"></i>
+                <span>Open Chat</span>
+            </button>
+            <button class="btn" onclick="window.open('https://docs.aws.amazon.com/apigateway/latest/developerguide/apigateway-websocket-api.html', '_blank')">
+                <i class="bi bi-book"></i>
+                <span>Docs</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="glass-card">
+        <div class="glass-header">
+            <div class="glass-title">
+                <i class="bi bi-terminal"></i>
+                <span>WebSocket Status</span>
+            </div>
+            <div class="status-pill" id="backendStatus">
+                <span class="status-dot"></span>
+                <span id="statusText">Connecting</span>
+            </div>
+        </div>
+        <div class="code-window" id="statusLog">
+<span class="cmd">$</span> wscat -c WS_ENDPOINT
+<span class="warn">...</span>
+        </div>
+
+        <!-- NEW STATS -->
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-value" id="statConnections">0</div>
+                <div class="stat-label">Connections</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="statMessages">0</div>
+                <div class="stat-label">Messages</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="statLatency">0ms</div>
+                <div class="stat-label">Latency</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ===============================
+         FEATURES
+=============================== -->
+<section class="features">
+    <div class="feature-card">
+        <div class="feature-icon">
+            <i class="bi bi-lightning-charge-fill"></i>
+        </div>
+        <div class="feature-title">Real-time</div>
+        <div class="feature-desc">
+            Powered by AWS WebSocket APIs — messages broadcast instantly to all connected
+            clients with millisecond latency.
+        </div>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">
+            <i class="bi bi-shield-lock-fill"></i>
+        </div>
+        <div class="feature-title">Serverless</div>
+        <div class="feature-desc">
+            Built entirely on API Gateway, Lambda, and DynamoDB — no servers, no scaling
+            worries, no maintenance.
+        </div>
+    </div>
+
+    <div class="feature-card">
+        <div class="feature-icon">
+            <i class="bi bi-brush-fill"></i>
+        </div>
+        <div class="feature-title">Modern UI</div>
+        <div class="feature-desc">
+            Green-black glassmorphism design inspired by modern AI tools and developer
+            dashboards.
+        </div>
+    </div>
+</section>
+
+<!-- ===============================
+         FOOTER
+=============================== -->
+<footer>
+    © 2026 GreenMind Chat — Real-time WebSocket Chat UI.
+</footer>
+
+<!-- ===============================
+         CHAT OVERLAY
+=============================== -->
+<div class="chat-overlay" id="chatOverlay">
+    <div class="chat-window">
+        <div class="chat-header">
+            <div class="chat-title">
+                <i class="bi bi-chat-heart-fill"></i>
+                <span>GreenMind Chat</span>
+            </div>
+            <button class="chat-close" onclick="closeChat()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div class="chat-messages" id="chatMessages"></div>
+
+        <div class="chat-input">
+            <input id="chatInput" placeholder="Type your message..." onkeydown="if(event.key==='Enter') sendChat()" />
+            <button onclick="sendChat()">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===============================
+         SCRIPT
+=============================== -->
+<script>
+    /* ===============================
+       CONFIG
+    =============================== */
+    const WS_URL = "wss://<ID API>.execute-api.<REGION>.amazonaws.com/production/";
+    const USERNAME = "User-" + Math.floor(Math.random() * 1000);
+
+    let socket;
+    let messageCount = 0;
+    let lastPing = 0;
+
+    /* ===============================
+       INIT
+    =============================== */
+    function connectWS() {
+        const statusText = document.getElementById("statusText");
+        const log = document.getElementById("statusLog");
+
+        socket = new WebSocket(WS_URL);
+        const startTime = Date.now();
+
+        socket.onopen = () => {
+            statusText.textContent = "Online";
+
+            log.innerHTML = `<span class="cmd">$</span> wscat -c ${WS_URL}
+<span class="ok">✔ Connected</span>`;
+
+            document.getElementById("statConnections").textContent =
+                Number(document.getElementById("statConnections").textContent) + 1;
+
+            lastPing = Date.now() - startTime;
+            document.getElementById("statLatency").textContent = lastPing + "ms";
+        };
+
+        socket.onmessage = (event) => {
+            messageCount++;
+            document.getElementById("statMessages").textContent = messageCount;
+
+            try {
+                const data = JSON.parse(event.data);
+                renderMessage(data.username || "Anon", data.message, false);
+            } catch {
+                renderMessage("System", event.data, false);
+            }
+        };
+
+        socket.onclose = () => {
+            statusText.textContent = "Offline";
+
+            log.innerHTML = `<span class="cmd">$</span> wscat -c ${WS_URL}
+<span class="warn">✖ Disconnected</span>`;
+
+            setTimeout(connectWS, 2000); // auto reconnect
+        };
+
+        socket.onerror = () => {
+            statusText.textContent = "Error";
+        };
+    }
+
+    connectWS();
+
+    /* ===============================
+       CHAT UI
+    =============================== */
+    function openChat() {
+        const overlay = document.getElementById("chatOverlay");
+        overlay.classList.add("active");
+
+        if (document.getElementById("chatMessages").children.length === 0) {
+            renderMessage("System", "Connected to GreenMind chat.", false);
+        }
+
+        setTimeout(() => {
+            document.getElementById("chatInput").focus();
+        }, 50);
+    }
+
+    function closeChat() {
+        document.getElementById("chatOverlay").classList.remove("active");
+    }
+
+    function renderMessage(user, text, isSelf) {
+        const messages = document.getElementById("chatMessages");
+
+        const wrapper = document.createElement("div");
+        wrapper.style.display = "flex";
+        wrapper.style.flexDirection = "column";
+        wrapper.style.alignItems = isSelf ? "flex-end" : "flex-start";
+
+        const meta = document.createElement("div");
+        meta.className = "chat-meta";
+        meta.textContent = user;
+
+        const bubble = document.createElement("div");
+        bubble.className = `chat-bubble ${isSelf ? "user" : "other"}`;
+        bubble.textContent = text;
+
+        wrapper.appendChild(meta);
+        wrapper.appendChild(bubble);
+        messages.appendChild(wrapper);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function sendChat() {
+        const input = document.getElementById("chatInput");
+        const text = input.value.trim();
+        if (!text || socket.readyState !== WebSocket.OPEN) return;
+
+        renderMessage(USERNAME, text, true);
+
+        socket.send(
+            JSON.stringify({
+                action: "sendmessage",
+                username: USERNAME,
+                message: text,
+            })
+        );
+
+        input.value = "";
+    }
+</script>
+
+</body>
+</html>
