@@ -1,0 +1,86 @@
+import crypto from "crypto";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  ScanCommand,
+  DeleteCommand,
+  PutCommand
+} from "@aws-sdk/lib-dynamodb";
+import {
+  ApiGatewayManagementApiClient,
+  PostToConnectionCommand
+} from "@aws-sdk/client-apigatewaymanagementapi";
+
+const client = new DynamoDBClient({});
+const ddb = DynamoDBDocumentClient.from(client);
+
+export const handler = async (event) => {
+  const tableConnections = process.env.CONNECTIONS_TABLE;
+  const tableMessages = process.env.MESSAGES_TABLE;
+
+  const domain = event.requestContext.domainName;
+  const stage = event.requestContext.stage;
+  const senderConnectionId = event.requestContext.connectionId;
+
+  const apiGw = new ApiGatewayManagementApiClient({
+    endpoint: `https://${domain}/${stage}`,
+  });
+
+  const body = JSON.parse(event.body || "{}");
+  const { username, message } = body;
+  const timestamp = new Date().toISOString();
+
+  try {
+    // ✅ Simpan message ke DB
+    await ddb.send(
+      new PutCommand({
+        TableName: tableMessages,
+        Item: {
+          messageId: crypto.randomUUID(),
+          username,
+          message,
+          timestamp,
+        },
+      })
+    );
+
+    // ✅ Ambil semua koneksi
+    const data = await ddb.send(
+      new ScanCommand({ TableName: tableConnections })
+    );
+
+    const promises = data.Items.map(async (item) => {
+      const connectionId = item.connectionId;
+      if (connectionId === senderConnectionId) return;
+
+      try {
+        await apiGw.send(
+          new PostToConnectionCommand({
+            ConnectionId: connectionId,
+            Data: Buffer.from(
+              JSON.stringify({ username, message, timestamp })
+            ),
+          })
+        );
+      } catch (err) {
+        if (err.statusCode === 410) {
+          await ddb.send(
+            new DeleteCommand({
+              TableName: tableConnections,
+              Key: { connectionId },
+            })
+          );
+        } else {
+          console.error("Send error:", err);
+        }
+      }
+    });
+
+    await Promise.all(promises);
+
+    return { statusCode: 200, body: "Message sent" };
+  } catch (err) {
+    console.error("Main error:", err);
+    return { statusCode: 500, body: "Failed" };
+  }
+};
