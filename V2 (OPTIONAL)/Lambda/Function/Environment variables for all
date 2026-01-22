@@ -1,2 +1,15 @@
 Environment variables :
 
+connect handler :
+Key : CONNECTIONS_TABLE
+Value : lks-jabar-2024-connection
+
+sendmessage handler :
+Key : CONNECTIONS_TABLE
+Value : lks-jabar-2024-connection
+Key : MESSAGES_TABLE
+Value : lks-jabar-2024-messages
+
+disconnect handler :
+Key : table
+Value : lks-jabar-2024-connection
